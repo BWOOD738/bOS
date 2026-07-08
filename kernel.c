@@ -1,0 +1,83 @@
+#include "arch/x86/idt.h"
+#include "arch/x86/gdt.h"
+#include "kernel/multiboot.h"
+#include "kernel/mm/memory.h"
+#include "kernel/vga.h"
+#include "kernel/kprintf.h"
+#include "kernel/timer.h"
+#include "kernel/devices/keyboard_ps2.h"
+/* Maybe move pmmInit to mm.h?*/
+#include "kernel/mm/mm.h"
+#include "kernel/mm/pmm.h"
+
+#include <stdint.h>
+
+/* Symbols in linker script */
+extern uint8_t _kernel_start[];
+extern uint8_t _kernel_end[];
+
+uintptr_t kstart = (uintptr_t)&_kernel_start;
+uintptr_t kend = (uintptr_t)&_kernel_end;
+
+static inline void halt()
+{
+    asm volatile("hlt");
+}
+
+void kmain(uint32_t magic, multiboot_info_t* bootInfo);
+
+void kmain(uint32_t magic, multiboot_info_t* bootInfo)
+{
+    terminal_initialize();
+    kprintf("====Booting====\n");
+    gdtInit();
+    kprintf("====GDT initialized====\n");
+    idtInit();
+    kprintf("====Interrupts now enabled====\n");
+    pitInit();
+    kprintf("====Initialized PIT===\n");
+    initKeyboardPS2();
+    kprintf("====Keyboard initialized====\n");
+
+    size_t ksize = kend - kstart;
+    uint32_t memsize = 1024 + bootInfo->mem_lower + bootInfo->mem_upper;
+
+    pmmInit(memsize, 0x100000 + ksize * 512);
+    kprintf("Physical Memory Manager initialized with %i kb physcial memory.\n mLow: %i mHigh: %i\n", memsize, bootInfo->mem_lower, bootInfo->mem_upper);
+
+    if (bootInfo->flags & (1 << 6)) 
+    {  /* Bit 6 says mmap is valid */
+        multiboot_mmap_entry_t* mmap = (multiboot_mmap_entry_t*)bootInfo->mmap_addr;
+        uint32_t mmap_end = bootInfo->mmap_addr + bootInfo->mmap_length;
+    
+        while ((uint32_t)mmap < mmap_end)
+        {
+            if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) 
+            {
+                pmmInitRegion(mmap->addr_low, mmap->len_low);
+            }
+        mmap = (multiboot_mmap_entry_t*)((uint32_t)mmap + mmap->size + sizeof(uint32_t));
+        }
+    }
+
+    void* block = pmmAllocPage();
+
+    kprintf("Allocated block at 0x%x\n", (uint32_t)block);
+    kprintf("=====Writing to block=====\n");
+    if(block)
+    {
+        uint32_t* ptest = (uint32_t*)block;
+        *ptest = 0xDEADBEEF;
+        
+        if(*ptest == 0xDEADBEEF)
+        {
+            kprintf("Writing successful\n");
+        }
+        else
+        {
+            kprintf("Writing unsuccessful\n");
+        }
+    }
+
+    halt();
+}
