@@ -1,6 +1,7 @@
 #pragma once 
 
 #include "types.h"
+#include <stdarg.h>
 
 void putc(char c);
 
@@ -8,7 +9,7 @@ void puts(const char* str);
 
 void kprintf(const char* fmt, ...);
 
-int* kprintfNumber(int* argp, int length, bool sign, int radix);
+int* kprintfNumber(va_list args, int length, bool sign, int radix);
 
 #define PRINTF_STATE_START 0
 #define PRINTF_STATE_LENGTH 1
