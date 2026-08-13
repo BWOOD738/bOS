@@ -1,28 +1,144 @@
-#include "pmm.h"
+#include "mm.h"
 #include "memory.h"
 #include "kernel/kprintf.h"
+#include "limine.h"
 
-static uint32_t pmm_mem_size;
-static uint32_t pmm_used_pages;
-static uint32_t pmm_max_pages;
+#define PAGES_PER_BYTE 0x8
+#define PAGE_ALIGN PAGE_SIZE
+
+static uint64_t pmm_mem_size;
+static uint64_t pmm_used_pages;
+static uint64_t pmm_max_pages;
 
 static uint32_t* pmm_mem_map;
 
-void pmmInit(size_t mem_size, phys_addr bitmap)
+
+__attribute__((used, section(".limine_requests")))
+struct limine_memmap_request mmap_req = 
 {
-    pmm_mem_size = mem_size;
-    pmm_mem_map = (uint32_t*)bitmap;
-    pmm_max_pages = (pmmGetMemorySize() * 1024) / PAGE_SIZE;
-    pmm_used_pages = pmmGetPageCount();
+    .id = LIMINE_MEMMAP_REQUEST_ID,
+    .revision = 0
+};
 
-    /* By default, all memory is in use */
+__attribute__((used, section(".limine_requests")))
+struct limine_hhdm_request hhdm_req = 
+{
+    .id = LIMINE_HHDM_REQUEST_ID,
+    .revision = 0
+};
 
-    memset(pmm_mem_map, 0xFF, pmmGetPageCount() / PAGES_PER_BYTE);
+size_t pmmGetMemorySize()
+{
+    return pmm_mem_size;
+}
+
+uint64_t pmmGetPageCount()
+{
+    return pmm_max_pages;
+}
+
+uint64_t pmmGetUsedPageCount()
+{
+    return pmm_used_pages;
+}
+
+uint64_t pmmGetFreePageCount()
+{
+    return pmm_max_pages - pmm_used_pages;
+}
+
+void pmmInit()
+{
+    uint64_t hhdm = 0; /* This should probably be global */
+    uint64_t total_memory = 0;
+
+    struct limine_memmap_entry* mme = NULL;
+
+    if(hhdm_req.response == NULL || mmap_req.response == NULL)
+    {
+        kprintf("pmm.c: Cannot get memory requests.");
+        return;
+    }
+    
+    hhdm = hhdm_req.response->offset;
+    
+    for(size_t i = 0; i < mmap_req.response->entry_count; i++ )
+    {
+        struct limine_memmap_entry* entry = mmap_req.response->entries[i];
+
+        if(entry->type == LIMINE_MEMMAP_USABLE)
+            total_memory += entry->length;
+    }
+
+
+    pmm_mem_size = total_memory / 1024;
+    pmm_max_pages = total_memory / PAGE_SIZE;
+    pmm_used_pages = pmm_max_pages;
+   
+    /* Calculate size of bitmap */
+    size_t bitmap_size = (pmm_max_pages + 7) / 8; /* Stores size of bitmap in bytes  */
+    bitmap_size = ALIGN_UP(bitmap_size, sizeof(uint32_t));
+
+    for(size_t i = 0; i < mmap_req.response->entry_count; i++)
+    {
+        struct limine_memmap_entry* entry = mmap_req.response->entries[i];
+        
+        if(entry->type != LIMINE_MEMMAP_USABLE || entry->length < bitmap_size)
+            continue;
+            
+        /* Check if a region can hold the bitmap */
+        if(entry->length >= bitmap_size + PAGE_SIZE)
+        {
+            mme = entry;
+            break;  
+        }
+    }
+
+    if(!mme)
+    {
+        kprintf("pmm.c: Not enough memory");
+        return;
+    }
+
+    uint64_t bitmap_phys = mme->base;
+    pmm_mem_map = (uint32_t*)(bitmap_phys + hhdm); /* could set hhdm to hhdm_req.response->offset initially instead of 0*/
+
+    bitmap_phys = ALIGN_UP(bitmap_phys, PAGE_SIZE);
+
+    /* Should look into skipping the first 1-2 MB since Limine puts some important stuff there */
+    /* All memory marked as used initially */
+    memset(pmm_mem_map, 0xff, bitmap_size);
+
+    for(size_t i = 0; i < mmap_req.response->entry_count; i++)
+    {
+        struct limine_memmap_entry* entry = mmap_req.response->entries[i];
+        
+        if(entry->type == LIMINE_MEMMAP_USABLE)
+        {
+            if(entry->base == bitmap_phys)
+            {
+                /* Mark memory after bitmap as free */
+                uint64_t free_region = bitmap_phys + bitmap_size;
+                size_t free_length = entry->length - bitmap_size;
+                
+                if(free_length > 0)
+                {
+                    pmmInitRegion(free_region, free_length);
+                }
+            }
+            else
+            {
+                pmmInitRegion(entry->base, entry->length);
+            }
+        }
+    }
+    pmmMapSet(0);
+
+    kprintf("Bitmap initialized at address 0x%lx, with size %lu MB memory", bitmap_phys, total_memory / (1024*1024));
 }
 
 inline void pmmMapSet(uint32_t bit)
 {
-
     pmm_mem_map[bit / 32] |= (1U << (bit % 32));
 }
 
@@ -36,7 +152,7 @@ inline bool pmmMapTest(uint32_t bit)
     return pmm_mem_map[bit / 32] &  (1U << (bit % 32));
 } 
 
-uint32_t pmmFirstMapFree()
+uint64_t pmmFirstMapFree()
 {
     for(uint32_t i = 0; i < pmmGetPageCount() / 32; i++)
     {
@@ -64,7 +180,7 @@ void* pmmAllocPage()
         return 0;
 
     pmmMapSet(frame);
-    phys_addr addr = frame * PAGE_SIZE;
+    physaddr_t addr = frame * PAGE_SIZE;
     pmm_used_pages++;
 
     return (void*)addr;
@@ -72,7 +188,7 @@ void* pmmAllocPage()
 
 void pmmDeallocPage(uintptr_t physical_addr)
 {
-    phys_addr addr = (phys_addr)physical_addr;
+    physaddr_t addr = (physaddr_t)physical_addr;
 
     if (addr & (PAGE_SIZE - 1)) return; /* Not aligned */
 
@@ -118,25 +234,7 @@ void pmmDeinitRegion(uintptr_t base, size_t size)
     if (base & (PAGE_SIZE - 1) || size & (PAGE_SIZE - 1)) return;
 }
 
-size_t pmmGetMemorySize()
-{
-    return pmm_mem_size;
-}
 
-uint32_t pmmGetPageCount()
-{
-    return pmm_max_pages;
-}
-
-uint32_t pmmGetUsedPageCount()
-{
-    return pmm_used_pages;
-}
-
-uint32_t pmmGetFreePageCount()
-{
-    return pmm_max_pages - pmm_used_pages;
-}
 
 static bool pmmAlignPage(uint32_t align)
 {

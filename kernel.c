@@ -7,7 +7,7 @@
 #include "kernel/timer.h"
 #include "kernel/devices/keyboard_ps2.h"
 /* Maybe move pmmInit to mm.h?*/
-//#include "kernel/mm/mm.h"
+#include "kernel/mm/mm.h"
 //#include "kernel/mm/pmm.h"
 #include "types.h"
 #include "kernel/framebuffer.h"
@@ -42,6 +42,7 @@ static volatile struct limine_module_request module_request = {
     .revision = 0
 };
 
+
 // Finally, define the start and end markers for the Limine requests.
 // These can also be moved anywhere, to any .c file, as seen fit.
 
@@ -56,8 +57,6 @@ static void hcf() {
         asm ("hlt");
     }
 }
-
-
 
 bool checkStringEndsWith(const char* str, const char* end)
 {
@@ -92,31 +91,33 @@ bool checkStringEndsWith(const char* str, const char* end)
 
 struct limine_file* getFile(const char* name)
 {
-        if (module_request.response == NULL || 
-        module_request.response->module_count == 0) {
+    if (module_request.response == NULL || 
+        module_request.response->module_count == 0) 
+    {
         return NULL;
     }
     
-    // Search through modules by name
-    for (uint64_t i = 0; i < module_request.response->module_count; i++) {
+    for (uint64_t i = 0; i < module_request.response->module_count; i++) 
+    {
         struct limine_file *file = module_request.response->modules[i];
         
-        // Compare filename (file->path might include path, not just filename)
         const char *filename = file->path;
-        // Skip path separators to get just the filename
         const char *basename = filename;
-        for (const char *p = filename; *p != '\0'; p++) {
+        for (const char *p = filename; *p != '\0'; p++) 
+        {
             if (*p == '/') basename = p + 1;
         }
         
         // Compare strings
         const char *a = name;
         const char *b = basename;
-        while (*a && *b && *a == *b) {
+        while (*a && *b && *a == *b) 
+        {
             a++;
             b++;
         }
-        if (*a == '\0' && *b == '\0') {
+        if (*a == '\0' && *b == '\0') 
+        {
             return file;
         }
     }
@@ -192,6 +193,9 @@ void kmain(void)
     kprintf("Initializing keyboard...");
     initKeyboardPS2();
     kprintf("Keyboard initialized...");
+
+    kprintf("Setting up pmm..\n");
+    pmmInit();
 
     hcf();
 }

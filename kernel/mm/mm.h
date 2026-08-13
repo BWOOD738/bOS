@@ -8,14 +8,23 @@
 management will be declared and defined elsewhere. 
 */
 
-typedef uint32_t phys_addr;
+#define PAGE_SIZE 0x1000
+#define ALIGN_UP(addr, align) (((addr) + (align) - 1) & ~((align) - 1))
+
+typedef struct 
+{
+
+};
+
+typedef uint64_t physaddr_t;
+typedef uint64_t virtaddr_t;
 
 /* pmm.c */
-void pmmInit(size_t mem_size, phys_addr bitmap);
+void pmmInit();
 inline void pmmMapSet(uint32_t bit);
 inline void pmmMapUnset(uint32_t bit);
 inline bool pmmMapTest(uint32_t bit); /* See if bit */
-uint32_t pmmFirstMapFree(); /* Return first bit free */
+uint64_t pmmFirstMapFree(); /* Return first bit free */
 void* pmmAllocPage();
 void pmmDeallocPage(uintptr_t physical_addr);
 void pmmInitRegion(uintptr_t base, size_t size);
