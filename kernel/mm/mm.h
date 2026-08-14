@@ -9,12 +9,9 @@ management will be declared and defined elsewhere.
 */
 
 #define PAGE_SIZE 0x1000
+
 #define ALIGN_UP(addr, align) (((addr) + (align) - 1) & ~((align) - 1))
-
-typedef struct 
-{
-
-};
+#define ALIGN_DOWN(addr, align) ((addr) & ~(align - 1))
 
 typedef uint64_t physaddr_t;
 typedef uint64_t virtaddr_t;

@@ -192,10 +192,29 @@ void kmain(void)
 
     kprintf("Initializing keyboard...");
     initKeyboardPS2();
-    kprintf("Keyboard initialized...");
+    kprintf("Keyboard initialized...\n");
 
     kprintf("Setting up pmm..\n");
     pmmInit();
+
+    void* block = pmmAllocPage();
+
+    kprintf("Allocated block at 0x%x\n", (uint64_t)block);
+    kprintf("=====Writing to block=====\n");
+    if(block)
+    {
+        uint64_t* ptest = (uint64_t*)block;
+        *ptest = 0xDEADBEEF;
+        
+        if(*ptest == 0xDEADBEEF)
+        {
+            kprintf("Writing successful\n");
+        }
+        else
+        {
+            kprintf("Writing unsuccessful\n");
+        }
+    }
 
     hcf();
 }

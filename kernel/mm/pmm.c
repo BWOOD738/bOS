@@ -12,7 +12,6 @@ static uint64_t pmm_max_pages;
 
 static uint32_t* pmm_mem_map;
 
-
 __attribute__((used, section(".limine_requests")))
 struct limine_memmap_request mmap_req = 
 {
@@ -59,9 +58,11 @@ void pmmInit()
         kprintf("pmm.c: Cannot get memory requests.");
         return;
     }
-    
-    hhdm = hhdm_req.response->offset;
-    
+    else
+    {
+        hhdm = hhdm_req.response->offset;
+    }
+
     for(size_t i = 0; i < mmap_req.response->entry_count; i++ )
     {
         struct limine_memmap_entry* entry = mmap_req.response->entries[i];
@@ -100,11 +101,8 @@ void pmmInit()
         return;
     }
 
-    uint64_t bitmap_phys = mme->base;
+    uint64_t bitmap_phys = ALIGN_UP(mme->base, PAGE_SIZE);
     pmm_mem_map = (uint32_t*)(bitmap_phys + hhdm); /* could set hhdm to hhdm_req.response->offset initially instead of 0*/
-
-    bitmap_phys = ALIGN_UP(bitmap_phys, PAGE_SIZE);
-
     /* Should look into skipping the first 1-2 MB since Limine puts some important stuff there */
     /* All memory marked as used initially */
     memset(pmm_mem_map, 0xff, bitmap_size);
@@ -132,31 +130,41 @@ void pmmInit()
             }
         }
     }
+
     pmmMapSet(0);
 
-    kprintf("Bitmap initialized at address 0x%lx, with size %lu MB memory", bitmap_phys, total_memory / (1024*1024));
+    kprintf("pmm.c: Bitmap initialized at address 0x%lx, with size %lu kb memory, %lu MB memory available\n", bitmap_phys, bitmap_size / 1024, total_memory / (1024*1024));
 }
 
 inline void pmmMapSet(uint32_t bit)
 {
-    pmm_mem_map[bit / 32] |= (1U << (bit % 32));
+    if(bit < pmm_max_pages)
+        pmm_mem_map[bit >> 5] |= (1U << (bit & 31));
 }
 
 inline void pmmMapUnset(uint32_t bit)
 {
-    pmm_mem_map[bit / 32] &= ~ (1U << (bit % 32));
+    if(bit < pmm_max_pages)
+        pmm_mem_map[bit >> 5] &= ~(1U << (bit & 31));
 }
 
 inline bool pmmMapTest(uint32_t bit)
 {
-    return pmm_mem_map[bit / 32] &  (1U << (bit % 32));
+    if(bit < pmm_max_pages)
+    {
+        return (pmm_mem_map[bit >> 5] & (1U << (bit & 31))) != 0;
+    }
+    else
+    {
+        return false;
+    }
 } 
 
 uint64_t pmmFirstMapFree()
 {
     for(uint32_t i = 0; i < pmmGetPageCount() / 32; i++)
     {
-        if(pmm_mem_map[i] != 0xffffffff)
+        if(pmm_mem_map[i] != UINT32_MAX)
         {
             for (uint32_t j = 0; j < 32; j++)
             {
@@ -168,7 +176,7 @@ uint64_t pmmFirstMapFree()
             }
         }
     }
-    return -1;
+    return UINT64_MAX;
 }
 void* pmmAllocPage()
 {
@@ -176,7 +184,7 @@ void* pmmAllocPage()
         return 0; /* No memory */
     
     uint32_t frame = pmmFirstMapFree();
-    if(frame == -1)
+    if(frame == UINT32_MAX)
         return 0;
 
     pmmMapSet(frame);
@@ -213,12 +221,20 @@ void pmmInitRegion(uintptr_t base, size_t size)
         pmm_used_pages--;
     }
 
-    if (base & (PAGE_SIZE - 1) || size & (PAGE_SIZE - 1)) 
-        kprintf("Misaligned Pages Rejected. "); /* TODO: Add a fucntion to realign pages. */
+    if (base & (PAGE_SIZE - 1)) 
+        kprintf("Misaligned base at: 0x%lx\n", (unsigned long)base); /* TODO: Add a fucntion to realign pages. */
+    
+    if(size & (PAGE_SIZE - 1))
+    {
+        size = ALIGN_DOWN(size, PAGE_SIZE);
+        
+        if(size == 0 || size % 2 != 0)
+            return;
+    }
 
     pmmMapSet(0); /* First page is always set so that allocs cannot be 0 */
-
 }
+
 /* Memory region will not be in use */
 void pmmDeinitRegion(uintptr_t base, size_t size)
 {
@@ -232,11 +248,4 @@ void pmmDeinitRegion(uintptr_t base, size_t size)
     }
 
     if (base & (PAGE_SIZE - 1) || size & (PAGE_SIZE - 1)) return;
-}
-
-
-
-static bool pmmAlignPage(uint32_t align)
-{
-    
 }

@@ -1,0 +1,140 @@
+CC = /home/bw/opt/cross/bin/x86_64-elf-gcc
+LD = ld
+
+all: build limine/limine build-iso
+
+build:
+	rm -f *.o
+	$(CC) -c kernel.c kernel/terminal.c kernel/kprintf.c kernel/io.h kernel/pic.c arch/x86_64/idt.c -I. --include=kernel/framebuffer.h --include=arch/x86_64/idt.h --include=kernel/io.h -Wall -Wextra -std=gnu99 -nostdlib -ffreestanding -fno-stack-protector -fno-stack-check -fno-PIC -ffunction-sections -fdata-sections -mcmodel=large
+	$(LD) -m elf_x86_64 -static -o bOS.elf -T linker.ld *.o
+	nasm -f elf64 arch/x86_64/interrupts.s -o interrupts.o
+
+limine/limine:
+	rm -rf limine
+	git clone https://github.com/limine-bootloader/limine.git --branch=v11.x-binary --depth=1
+	$(MAKE) -C limine
+
+build-iso: limine/limine build
+	rm -rf iso_root
+	mkdir -p iso_root/boot
+	cp -v bOS.elf iso_root/boot/
+	cp -v zap-light16.psf iso_root/boot/
+	mkdir -p iso_root/boot/limine
+	cp -v limine.conf iso_root/boot/limine/
+	mkdir -p iso_root/EFI/BOOT
+	cp -v limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
+	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
+	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/
+	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
+		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
+		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
+		-efi-boot-part --efi-boot-image --protective-msdos-label \
+		iso_root -o bOS.iso
+	./limine/limine bios-install bOS.iso
+
+run:
+	qemu-system-x86_64 --cdrom bOS.iso
+
+clean:
+	rm -rf *.o iso_root bOS.iso limine
+
+	================================================================================================================================
+
+
+
+OS_NAME := bOS
+ISO_NAME := $(OS_NAME).iso
+KERNEL_BIN := $(OS_NAME).elf
+
+CC := /home/bw/opt/cross/bin/x86_64-elf-gcc
+AS := nasm
+LD := ld
+
+# x86_64 specific flags
+CFLAGS := -ffreestanding -Wall -Wextra -O1 -g -I. \
+          -std=gnu99 -nostdlib \
+          -fno-stack-protector -fno-stack-check \
+          -fno-PIC -ffunction-sections -fdata-sections \
+          -mcmodel=large -mno-red-zone
+
+LDFLAGS := -m elf_x86_64 -static -T linker.ld
+ASFLAGS := -f elf64
+# Exclude gdt source code for now and just use Limine GDT
+C_SOURCES := $(shell find . -name "*.c" -not -path "./limine/*" -not -path "./arch/x86_64/gdt.c")
+S_SOURCES := $(shell find . -name "*.s" -not -path "./limine/*" -not -path "./arch/x86_64/gdts.s")
+
+# Convert source file lists to object file lists in a 'build' directory
+C_OBJECTS := $(patsubst %.c, build/%.o, $(C_SOURCES))
+S_OBJECTS := $(patsubst %.s, build/%.o, $(S_SOURCES))
+OBJECTS   := $(C_OBJECTS) $(S_OBJECTS)
+
+# --- Rules ---
+
+.PHONY: all clean iso run build-iso limine
+
+all: limine build-iso
+
+# Link the kernel
+$(KERNEL_BIN): $(OBJECTS)
+	@echo "Linking $@"
+	@$(LD) $(LDFLAGS) -o $@ $(OBJECTS)
+
+# Compile C files
+build/%.o: %.c
+	@mkdir -p $(dir $@)
+	@echo "Compiling $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+# Assemble assembly files
+build/%.o: %.s
+	@mkdir -p $(dir $@)
+	@echo "Assembling $<"
+	@$(AS) $(ASFLAGS) $< -o $@
+
+# Build step - compiles everything and links
+build: $(KERNEL_BIN)
+
+# Clone and build Limine
+limine/limine:
+	@echo "Cloning Limine..."
+	@rm -rf limine
+	@git clone https://github.com/limine-bootloader/limine.git --branch=v11.x-binary --depth=1
+	@gcc -o limine/limine limine/limine.c -Wall -Wextra -O2
+
+# Create bootable ISO with Limine
+build-iso: limine/limine build
+	rm -rf iso_root
+	mkdir -p iso_root/boot
+	cp -v bOS.elf iso_root/boot/
+	cp -v zap-light16.psf iso_root/boot/
+	mkdir -p iso_root/boot/limine
+	cp -v limine.conf iso_root/boot/limine/
+	mkdir -p iso_root/EFI/BOOT
+	cp -v limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
+	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
+	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/
+	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
+		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
+		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
+		-efi-boot-part --efi-boot-image --protective-msdos-label \
+		iso_root -o bOS.iso
+	./limine/limine bios-install bOS.iso
+
+# Run in QEMU
+run: build-iso
+	qemu-system-x86_64 -cdrom $(ISO_NAME)
+
+# Debug mode in QEMU
+debug: build-iso
+	@echo "Starting QEMU in debug mode..."
+	@qemu-system-x86_64 -cdrom $(ISO_NAME) -s -S -no-reboot -no-shutdown
+
+# Clean up build artifacts
+clean:
+	@rm -rf build $(KERNEL_BIN) $(ISO_NAME) iso_root
+	@echo "Cleaned."
+
+# Deep clean including Limine
+distclean: clean
+	@rm -rf limine
+	@echo "Deep cleaned."
