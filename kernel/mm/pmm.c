@@ -2,6 +2,7 @@
 #include "memory.h"
 #include "kernel/kprintf.h"
 #include "limine.h"
+#include "kernel/bootloader.h"
 
 #define PAGES_PER_BYTE 0x8
 #define PAGE_ALIGN PAGE_SIZE
@@ -19,12 +20,6 @@ struct limine_memmap_request mmap_req =
     .revision = 0
 };
 
-__attribute__((used, section(".limine_requests")))
-struct limine_hhdm_request hhdm_req = 
-{
-    .id = LIMINE_HHDM_REQUEST_ID,
-    .revision = 0
-};
 
 size_t pmmGetMemorySize()
 {
@@ -48,19 +43,15 @@ uint64_t pmmGetFreePageCount()
 
 void pmmInit()
 {
-    uint64_t hhdm = 0; /* This should probably be global */
+    uint64_t hhdm = g_hhdm_req.response->offset; /* This should probably be global */
     uint64_t total_memory = 0;
 
     struct limine_memmap_entry* mme = NULL;
 
-    if(hhdm_req.response == NULL || mmap_req.response == NULL)
+    if(g_hhdm_req.response == NULL || mmap_req.response == NULL)
     {
         kprintf("pmm.c: Cannot get memory requests.");
         return;
-    }
-    else
-    {
-        hhdm = hhdm_req.response->offset;
     }
 
     for(size_t i = 0; i < mmap_req.response->entry_count; i++ )

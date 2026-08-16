@@ -15,7 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-
+#include "kernel/bootloader.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -198,12 +198,13 @@ void kmain(void)
     pmmInit();
 
     void* block = pmmAllocPage();
+    uint64_t hhdm_offset = g_hhdm_req.response->offset;
 
     kprintf("Allocated block at 0x%x\n", (uint64_t)block);
     kprintf("=====Writing to block=====\n");
     if(block)
     {
-        uint64_t* ptest = (uint64_t*)block;
+        uint64_t* ptest = (uint64_t*)((uint64_t)block + hhdm_offset);
         *ptest = 0xDEADBEEF;
         
         if(*ptest == 0xDEADBEEF)

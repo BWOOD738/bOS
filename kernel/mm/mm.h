@@ -26,3 +26,10 @@ void* pmmAllocPage();
 void pmmDeallocPage(uintptr_t physical_addr);
 void pmmInitRegion(uintptr_t base, size_t size);
 void pmmDeinitRegion(uintptr_t base, size_t size);
+
+/* vmm.c */
+
+void vmmInit();
+void vmmVirtToPhysical(virtaddr_t vaddr);
+
+/* tlb.c */
