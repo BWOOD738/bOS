@@ -10,13 +10,14 @@ void putc(char c)
     } 
     else if (c == '\t')
     {
-        global_terminal->cursor_pos.x += 32;  // 4 spaces * 8 pixels
+        global_terminal->cursor_pos.x += 32;  /* 4 spaces * 8 pixels */
     }
     else 
     {
         putcTerminal(global_terminal, c, 
                      global_terminal->cursor_pos.x, 
                      global_terminal->cursor_pos.y);
+                     
         global_terminal->cursor_pos.x += 8;
     }
     
@@ -194,25 +195,24 @@ int* kprintfNumber(va_list args, int length, bool sign, int radix){
             num = va_arg(args, unsigned int);
     }
     
-    // Convert and print
     char buf[32];
     char* p = buf + sizeof(buf) - 1;
     *p = '\0';
     
     if (!sign && (long long)num < 0)
     {
-        // Unsigned
         unsigned long long unum = num;
-        do {
+        do 
+        {
             *--p = "0123456789ABCDEF"[unum % radix];
             unum /= radix;
         } while (unum > 0);
     }
     else if (sign && (long long)num < 0)
     {
-        // Signed negative
         long long snum = num;
-        do {
+        do 
+        {
             *--p = "0123456789ABCDEF"[-(snum % radix)];
             snum /= radix;
         } while (snum != 0);
@@ -220,8 +220,8 @@ int* kprintfNumber(va_list args, int length, bool sign, int radix){
     }
     else
     {
-        // Positive
-        do {
+        do 
+        {
             *--p = "0123456789ABCDEF"[num % radix];
             num /= radix;
         } while (num > 0);

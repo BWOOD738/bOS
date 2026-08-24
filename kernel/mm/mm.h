@@ -29,7 +29,40 @@ void pmmDeinitRegion(uintptr_t base, size_t size);
 
 /* vmm.c */
 
+typedef uint64_t pml4e_t;
+typedef uint64_t pdpte_t;
+typedef uint64_t pde_t;
+typedef uint64_t pte_t;
+
+__attribute__((packed, aligned(PAGE_SIZE)))
+typedef struct 
+{
+    pml4e_t entries[512];
+} pml4_t;
+
+__attribute__((packed, aligned(PAGE_SIZE)))
+typedef struct 
+{
+    pdpte_t entries[512];
+} pdpt_t;
+
+__attribute__((packed, aligned(PAGE_SIZE)))
+typedef struct 
+{
+    pde_t entries[512];
+} pagedir_t;
+
+__attribute__((packed, aligned(PAGE_SIZE)))
+typedef struct 
+{
+    pte_t entries[512];
+} pagetbl_t;
+
+
 void vmmInit();
-void vmmVirtToPhysical(virtaddr_t vaddr);
+uint64_t vmmPhysicalToVirtual(physaddr_t physical);
+uint64_t vmmWalkPageTable(virtaddr_t virtal);
+void vmmMapPage(physaddr_t physical, virtaddr_t virtual, uint64_t flags);
+void vmmUnmapPage();
 
 /* tlb.c */

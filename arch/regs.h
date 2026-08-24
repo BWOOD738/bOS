@@ -14,4 +14,38 @@ typedef struct
     uint64_t rip, cs, rflags, rsp, ss;
 } iregs_t;
 
+inline uint64_t readCR0()
+{
+    uint64_t value;
+
+    asm volatile("movq %%cr0, %0" : "=r"(value) :: "memory");
+    return value;
+}
+
+inline uint64_t readCR3()
+{
+    uint64_t value;
+
+    asm volatile("movq %%cr3, %0" : "=r"(value) :: "memory");
+    return value;
+}
+
+inline uint64_t writeCR3(uint64_t value)
+{
+    asm volatile("movq %0, %%cr0" :: "r"(value) : "memory");
+    return value;
+}
+
+inline uint64_t getAddressWidth()
+{
+    uint64_t eax = 0x80000008;
+    asm volatile (
+        "cpuid"
+        : "=a"(eax)
+        : "a" (eax)
+    );
+
+    return eax;
+}
+
 #endif

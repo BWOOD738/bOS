@@ -16,21 +16,7 @@ void initTerminal(terminal_t* terminal, framebuffer_t* framebuffer, psf1_font_t*
 
     terminal->fb = framebuffer;
     terminal->psf1_font = psf1_font;
-
-
-    volatile uint32_t* fb_ptr = (volatile uint32_t*)framebuffer->base_addr;
     
-    // Write to multiple positions to ensure we're hitting visible area
-    fb_ptr[0] = 0xFFFFFFFF;           // White pixel at top-left
-    fb_ptr[100] = 0xFFFF0000;         // Red pixel
-    fb_ptr[200] = 0xFF00FF00;         // Green pixel
-    fb_ptr[300] = 0xFF0000FF;         // Blue pixel
-    
-    // Also try writing to center of screen
-    uint32_t center = (framebuffer->height/2 * framebuffer->pixels_per_scan_line) + (framebuffer->width/2);
-    fb_ptr[center] = 0xFFFF0000;
-
-    return;
 }
 
 void print(terminal_t* terminal, const char* string)
