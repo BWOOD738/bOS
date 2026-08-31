@@ -49,7 +49,7 @@ void* irq_routines[16] =
 
 void isrExceptionHandler(iregs_t* regs)
 {   
-    kprintf("INT: %d, ERR: 0x%x, EIP: 0x%x\n", 
+    kprintf("INT: %d, ERR: 0x%lx, RIP: 0x%lx\n", 
            regs->int_no, regs->err_code, regs->rip);
 
     if(regs->int_no < 32)

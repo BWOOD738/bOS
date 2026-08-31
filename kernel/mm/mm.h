@@ -9,6 +9,7 @@ management will be declared and defined elsewhere.
 */
 
 #define PAGE_SIZE 0x1000
+#define NUM_PAGES(num)          (((num) + PAGE_SIZE - 1) / PAGE_SIZE)
 
 #define ALIGN_UP(addr, align) (((addr) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(addr, align) ((addr) & ~(align - 1))
@@ -61,7 +62,6 @@ typedef struct
 
 void vmmInit();
 uint64_t vmmPhysicalToVirtual(physaddr_t physical);
-uint64_t vmmWalkPageTable(virtaddr_t virtal);
 void vmmMapPage(physaddr_t physical, virtaddr_t virtual, uint64_t flags);
 void vmmUnmapPage();
 

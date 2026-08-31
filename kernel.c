@@ -220,7 +220,7 @@ void kmain(void)
     kprintf("Initializing virtual memory...\n");
 
     vmmInit();
-
+    
     kprintf("vmmInit called and works.");
 
     hcf();

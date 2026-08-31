@@ -13,13 +13,6 @@ static uint64_t pmm_max_pages;
 
 static uint32_t* pmm_mem_map;
 
-__attribute__((used, section(".limine_requests")))
-struct limine_memmap_request mmap_req = 
-{
-    .id = LIMINE_MEMMAP_REQUEST_ID,
-    .revision = 0
-};
-
 
 size_t pmmGetMemorySize()
 {
@@ -48,15 +41,15 @@ void pmmInit()
 
     struct limine_memmap_entry* mme = NULL;
 
-    if(g_hhdm_req.response == NULL || mmap_req.response == NULL)
+    if(g_hhdm_req.response == NULL || g_mmap_request.response == NULL)
     {
         kprintf("pmm.c: Cannot get memory requests.");
         return;
     }
 
-    for(size_t i = 0; i < mmap_req.response->entry_count; i++ )
+    for(size_t i = 0; i < g_mmap_request.response->entry_count; i++ )
     {
-        struct limine_memmap_entry* entry = mmap_req.response->entries[i];
+        struct limine_memmap_entry* entry = g_mmap_request.response->entries[i];
 
         if(entry->type == LIMINE_MEMMAP_USABLE)
             total_memory += entry->length;
@@ -71,9 +64,9 @@ void pmmInit()
     size_t bitmap_size = (pmm_max_pages + 7) / 8; /* Stores size of bitmap in bytes  */
     bitmap_size = ALIGN_UP(bitmap_size, sizeof(uint32_t));
 
-    for(size_t i = 0; i < mmap_req.response->entry_count; i++)
+    for(size_t i = 0; i < g_mmap_request.response->entry_count; i++)
     {
-        struct limine_memmap_entry* entry = mmap_req.response->entries[i];
+        struct limine_memmap_entry* entry = g_mmap_request.response->entries[i];
         
         if(entry->type != LIMINE_MEMMAP_USABLE || entry->length < bitmap_size)
             continue;
@@ -98,9 +91,9 @@ void pmmInit()
     /* All memory marked as used initially */
     memset(pmm_mem_map, 0xff, bitmap_size);
 
-    for(size_t i = 0; i < mmap_req.response->entry_count; i++)
+    for(size_t i = 0; i < g_mmap_request.response->entry_count; i++)
     {
-        struct limine_memmap_entry* entry = mmap_req.response->entries[i];
+        struct limine_memmap_entry* entry = g_mmap_request.response->entries[i];
         
         if(entry->type == LIMINE_MEMMAP_USABLE)
         {
