@@ -1,8 +1,8 @@
 #include "keyboard_ps2.h"
-#include "arch/x86/isr.h"
-#include "util.h"
+#include "arch/x86_64/isr.h"
 #include "kernel/io.h"
 #include "kernel/kprintf.h"
+#include "arch/regs.h"
 
 #include <types.h>
 

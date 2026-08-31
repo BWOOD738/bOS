@@ -1,32 +1,35 @@
+
 OS_NAME := bOS
 ISO_NAME := $(OS_NAME).iso
-KERNEL_BIN := $(OS_NAME)
+KERNEL_BIN := $(OS_NAME).elf
 
-
-CC := /home/bw/opt/cross/bin/i686-elf-gcc # Use an absolute path for now
+CC := /home/bw/opt/cross/bin/x86_64-elf-gcc
 AS := nasm
 LD := ld
 
-CFLAGS := -ffreestanding -Wall -Wextra -O2 -g -I.
-LDFLAGS := -m elf_i386 -T linker.ld
-ASFLAGS := -f elf32
+# x86_64 specific flags
+CFLAGS := -ffreestanding -Wall -Wextra -O1 -g -I. \
+          -std=gnu99 -nostdlib \
+          -fno-stack-protector -fno-stack-check \
+          -fno-PIC -ffunction-sections -fdata-sections \
+          -mcmodel=large -mno-red-zone -mgeneral-regs-only # Should enable SSE instructions 
 
-# --- File Discovery ---
-# This recursively finds all .c and .s files in the current directory and subdirectories
-C_SOURCES := $(shell find . -name "*.c")
-S_SOURCES := $(shell find . -name "*.s")
+LDFLAGS := -m elf_x86_64 -static -T linker.ld
+ASFLAGS := -f elf64
+# Exclude gdt source code for now and just use Limine GDT
+C_SOURCES := $(shell find . -name "*.c" -not -path "./limine/*" -not -path "./arch/x86_64/gdt.c")
+S_SOURCES := $(shell find . -name "*.s" -not -path "./limine/*" -not -path "./arch/x86_64/gdts.s")
 
 # Convert source file lists to object file lists in a 'build' directory
-# This keeps your source tree clean
 C_OBJECTS := $(patsubst %.c, build/%.o, $(C_SOURCES))
 S_OBJECTS := $(patsubst %.s, build/%.o, $(S_SOURCES))
 OBJECTS   := $(C_OBJECTS) $(S_OBJECTS)
 
 # --- Rules ---
 
-.PHONY: all clean iso run
+.PHONY: all clean iso run build-iso limine
 
-all: $(KERNEL_BIN)
+all: limine build-iso
 
 # Link the kernel
 $(KERNEL_BIN): $(OBJECTS)
@@ -45,23 +48,50 @@ build/%.o: %.s
 	@echo "Assembling $<"
 	@$(AS) $(ASFLAGS) $< -o $@
 
-# Create the ISO image using GRUB
-iso: $(KERNEL_BIN)
-	@mkdir -p isodir/boot/grub
-	@cp $(KERNEL_BIN) isodir/boot/$(KERNEL_BIN)
-	@cp boot/grub/grub.cfg isodir/boot/grub/grub.cfg
-	@grub-mkrescue -o $(ISO_NAME) isodir
-	@rm -rf isodir
-	@echo "ISO created: $(ISO_NAME)"
+# Build step - compiles everything and links
+build: $(KERNEL_BIN)
+
+# Clone and build Limine
+limine/limine:
+	@echo "Cloning Limine..."
+	@rm -rf limine
+	@git clone https://github.com/limine-bootloader/limine.git --branch=v11.x-binary --depth=1
+	@gcc -o limine/limine limine/limine.c -Wall -Wextra -O2
+
+# Create bootable ISO with Limine
+build-iso: limine/limine build
+	rm -rf iso_root
+	mkdir -p iso_root/boot
+	cp -v bOS.elf iso_root/boot/
+	cp -v zap-light16.psf iso_root/boot/
+	mkdir -p iso_root/boot/limine
+	cp -v limine.conf iso_root/boot/limine/
+	mkdir -p iso_root/EFI/BOOT
+	cp -v limine/limine-bios.sys limine/limine-bios-cd.bin limine/limine-uefi-cd.bin iso_root/boot/limine/
+	cp -v limine/BOOTX64.EFI iso_root/EFI/BOOT/
+	cp -v limine/BOOTIA32.EFI iso_root/EFI/BOOT/
+	xorriso -as mkisofs -R -r -J -b boot/limine/limine-bios-cd.bin \
+		-no-emul-boot -boot-load-size 4 -boot-info-table -hfsplus \
+		-apm-block-size 2048 --efi-boot boot/limine/limine-uefi-cd.bin \
+		-efi-boot-part --efi-boot-image --protective-msdos-label \
+		iso_root -o bOS.iso
+	./limine/limine bios-install bOS.iso
+
+# Run in QEMU
+run: build-iso
+	qemu-system-x86_64 -cdrom $(ISO_NAME)
+
+# Debug mode in QEMU
+debug: build-iso
+	@echo "Starting QEMU in debug mode..."
+	@qemu-system-x86_64 -cdrom $(ISO_NAME) -s -S -no-reboot -no-shutdown
 
 # Clean up build artifacts
 clean:
-	@rm -rf build $(KERNEL_BIN) $(ISO_NAME)
+	@rm -rf build $(KERNEL_BIN) $(ISO_NAME) iso_root
 	@echo "Cleaned."
 
-debug:
-	qemu-system-i386 -cdrom $(ISO_NAME) -s -S
-
-# Optional: Run in QEMU
-run: iso
-	qemu-system-i386 $(ISO_NAME) -d int -m 128M
+# Deep clean including Limine
+distclean: clean
+	@rm -rf limine
+	@echo "Deep cleaned."

@@ -1,7 +1,7 @@
 #include "timer.h"
-#include "arch/x86/isr.h"
+#include "arch/x86_64/isr.h"
 #include  "io.h"
-#include "util.h"
+#include "arch/regs.h"
 
 static uint64_t ticks;
 static const uint32_t freq = 100;
