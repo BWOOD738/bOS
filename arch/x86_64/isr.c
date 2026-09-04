@@ -1,5 +1,5 @@
 #include "isr.h"
-#include "kernel/kprintf.h"
+#include "kernel/lib/kprintf.h"
 #include "kernel/io.h"
 #include "kernel/pic.h"
 

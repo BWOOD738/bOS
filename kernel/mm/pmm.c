@@ -1,6 +1,6 @@
 #include "mm.h"
-#include "memory.h"
-#include "kernel/kprintf.h"
+#include "kernel/lib/memory.h"
+#include "kernel/lib/kprintf.h"
 #include "limine.h"
 #include "kernel/bootloader.h"
 

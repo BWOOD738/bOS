@@ -1,5 +1,5 @@
 #include "kprintf.h"
-#include "terminal.h"
+#include "kernel/terminal.h"
 
 void putc(char c)
 {

@@ -1,7 +1,6 @@
 #include "idt.h"
-#include <types.h>
 #include "kernel/pic.h"
-#include <stdint.h>
+
 
 #define MAX_DESCRIPTORS 256
 #define IRQ_OFFSET 32
