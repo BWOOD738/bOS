@@ -3,11 +3,6 @@
 #include "types.h"
 #include <stddef.h>
 
-typedef struct 
-{
-    byte status;
-    uint32_t size;
-} alloc_t;
 
 void malloc();
 void free();

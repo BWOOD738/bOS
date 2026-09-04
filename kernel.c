@@ -1,20 +1,13 @@
 #include "arch/x86_64/idt.h"
-//#include "arch/x86/gdt.h"
 #include "limine.h"
-//#include "kernel/mm/memory.h"
-//#include "kernel/vga.h"
-#include "kernel/kprintf.h"
+#include "kernel/lib/kprintf.h"
 #include "kernel/timer.h"
 #include "kernel/devices/keyboard_ps2.h"
-/* Maybe move pmmInit to mm.h?*/
 #include "kernel/mm/mm.h"
-//#include "kernel/mm/pmm.h"
 #include "types.h"
 #include "kernel/framebuffer.h"
 #include "kernel/terminal.h"
-#include <stddef.h>
-#include <stdint.h>
-
+#include "kernel/lib/memory.h"
 #include "kernel/bootloader.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
@@ -197,6 +190,7 @@ void kmain(void)
     kprintf("Setting up pmm..\n");
     pmmInit();
 
+    /* should put this in a test directory */
     void* block = pmmAllocPage();
     uint64_t hhdm_offset = g_hhdm_req.response->offset;
 
@@ -221,7 +215,39 @@ void kmain(void)
 
     vmmInit();
     
-    kprintf("vmmInit called and works.");
+    kprintf("Initialized virtual memory...\n");
+
+    kprintf("Initializing heap..\n");
+
+    void* heap_start = (void*)0x100000 + g_hhdm_req.response->offset;
+    size_t heap_size = 16 * 1024 * 1024;
+
+    slobInit(heap_start, heap_size);
+    
+    printHeap();
+    /* This returns 680 bytes allocated due to slob_header_t causing a little overhead. This should reduce with larger allocations */
+    void* ptr1 = slobAlloc(100);
+    void* ptr2 = slobAlloc(200);
+    void* ptr3 = slobAlloc(300);
+    
+    printHeap();
+
+    if (!ptr1 || !ptr2 || !ptr3) {
+        kprintf("Allocation failed");
+        return;
+    }
+    
+    // Write to memory
+    memset(ptr1, 0xAA, 100);
+    memset(ptr2, 0xBB, 200);
+    memset(ptr3, 0xCC, 300);
+    
+    // Verify memory is usable
+    uint8_t* check = (uint8_t*)ptr1;
+    if (check[0] != 0xAA || check[99] != 0xAA) {
+        kprintf("Memory read failed.");
+        return;
+    }
 
     hcf();
 }

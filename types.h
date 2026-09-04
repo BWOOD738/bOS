@@ -19,11 +19,12 @@ typedef unsigned long long int uint64_t;
 
 #if defined (__x86_64__)
     #include <stdint.h>
-
+    #include <stddef.h>
+    
     typedef unsigned char byte;
 
     typedef byte uint8_t;
-    typedef signed char int8_t;
+
 #endif
 
 #define bool int

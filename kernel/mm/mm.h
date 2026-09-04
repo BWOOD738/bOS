@@ -1,8 +1,7 @@
 #pragma once
 
 #include <types.h>
-#include <stddef.h> /* size_t */
-#include <stdint.h>
+
 
 /* This file will be used as an interface for the rest of the main files in the mm directory. Important functions for memory
 management will be declared and defined elsewhere. 
@@ -66,3 +65,17 @@ void vmmMapPage(physaddr_t physical, virtaddr_t virtual, uint64_t flags);
 void vmmUnmapPage();
 
 /* tlb.c */
+
+/* slob.c */
+
+void slobInit(void* start, size_t size);
+void* slobAlloc(size_t size);
+void slobFree(void* p);
+void* slobRealloc(void* p, size_t new_size);
+void* slobCalloc(size_t num, size_t size);
+
+void printHeap();
+
+
+void* kmalloc(size_t size );
+void* kfree(void* p);

@@ -1,8 +1,8 @@
 #include "mm.h"
 #include "kernel/bootloader.h"
 #include "types.h"
-#include "kernel/kprintf.h"
-#include "memory.h"
+#include "kernel/lib/kprintf.h"
+#include "kernel/lib/memory.h"
 #include "arch/regs.h"
 
 /*
@@ -30,6 +30,7 @@ https://cs61.seas.harvard.edu/site/2018/Kernel3Old/
 #define PAGE_COW (1ULL << 9)
 #define PAGE_EXECUTABLE (1ULL << 63)
 
+#define PAGE_RECURSIVE_BASE 0xFFFFFF0000000000ULL /* This address doesnt seem to work. Find another entry in PML4 that works */
 
 /* initial top level page table */
 static pml4_t* pml4;
@@ -44,6 +45,9 @@ static uint32_t max_linear_address;
 static pte_t vmmAllocPage(uint64_t flags);
 static uint64_t vmmVirtualToPhysical(virtaddr_t virtual);
 
+/* This will be used to get the virtual addresses of page table entry. Used for recursive mapping */
+static uint64_t vmmPageTableVirtAddress(virtaddr_t pml4_indx, virtaddr_t pdpt_indx, virtaddr_t pd_iddx, virtaddr_t pt_indx );
+
 /* Will use Limine's identity mapped pages for now as it maps the total amount of physical memory we have.
     Later will need to switch to and manage the kernel's own page tables but Limine's initial PTs should work well for now.
 */
@@ -54,7 +58,6 @@ void vmmInit()
     uint64_t bits = getAddressWidth();
     uint64_t offset = g_hhdm_req.response->offset;
 
-    /* The maximum amount of bits should be read from the cpu directly but since we only use x64 with 4kb pages, this should work as a constant  */
     max_phys_address = bits & 0xFF;
     max_linear_address = bits >> 8 & 0xFF;
     
@@ -76,7 +79,7 @@ void vmmInit()
         return;
     }
     
-    kprintf("Mapping physical address 0x%lx to virtual address 0x%lx\n", phys, virt);
+    kprintf("vmm.c: Mapping physical address 0x%lx to virtual address 0x%lx\n", phys, virt);
     
     vmmMapPage(phys, virt, PAGE_PRESENT | PAGE_WRITABLE);
 
@@ -87,7 +90,7 @@ void vmmInit()
     
     if (*test == 0x1234567890ABCDEFULL && *hhdm == 0x1234567890ABCDEFULL) 
     {
-        kprintf("Value of test pointer and hhdm pointer is the same\n");
+        kprintf("vmm.c: Value of test pointer and hhdm pointer is the same\n");
     } 
     else 
     {
@@ -147,6 +150,7 @@ void vmmMapPage(physaddr_t physical, virtaddr_t virtual, uint64_t flags)
     asm volatile("invlpg (%0)" :: "r"(virtual) : "memory");
 }
 
+
 uint64_t vmmPhysicalToVirtual(physaddr_t physical)
 {
     virtaddr_t virtual = physical + g_hhdm_req.response->offset;
@@ -159,3 +163,7 @@ uint64_t vmmVirtualToPhysical(virtaddr_t virtual)
     return physical;
 }
 
+uint64_t vmmPageTableVirtAddress(virtaddr_t pml4_indx, virtaddr_t pdpt_indx, virtaddr_t pd_indx, virtaddr_t pt_indx)
+{
+    return PAGE_RECURSIVE_BASE | (pml4_indx << 39) | (pdpt_indx << 30) | (pd_indx << 21) | (pt_indx << 12);
+}
