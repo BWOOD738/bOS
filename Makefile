@@ -17,8 +17,8 @@ CFLAGS := -ffreestanding -Wall -Wextra -O1 -g -I. \
 LDFLAGS := -m elf_x86_64 -static -T linker.ld
 ASFLAGS := -f elf64
 # Exclude gdt source code for now and just use Limine GDT
-C_SOURCES := $(shell find . -name "*.c" -not -path "./limine/*" -not -path "./arch/x86_64/gdt.c")
-S_SOURCES := $(shell find . -name "*.s" -not -path "./limine/*" -not -path "./arch/x86_64/gdts.s")
+C_SOURCES := $(shell find . -name "*.c" -not -path "./limine/*" )
+S_SOURCES := $(shell find . -name "*.s" -not -path "./limine/*")
 
 # Convert source file lists to object file lists in a 'build' directory
 C_OBJECTS := $(patsubst %.c, build/%.o, $(C_SOURCES))

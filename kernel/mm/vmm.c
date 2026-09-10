@@ -30,8 +30,6 @@ https://cs61.seas.harvard.edu/site/2018/Kernel3Old/
 #define PAGE_COW (1ULL << 9)
 #define PAGE_EXECUTABLE (1ULL << 63)
 
-#define PAGE_RECURSIVE_BASE 0xFFFFFF0000000000ULL /* This address doesnt seem to work. Find another entry in PML4 that works */
-
 /* initial top level page table */
 static pml4_t* pml4;
 
@@ -44,9 +42,6 @@ static uint32_t max_linear_address;
 
 static pte_t vmmAllocPage(uint64_t flags);
 static uint64_t vmmVirtualToPhysical(virtaddr_t virtual);
-
-/* This will be used to get the virtual addresses of page table entry. Used for recursive mapping */
-static uint64_t vmmPageTableVirtAddress(virtaddr_t pml4_indx, virtaddr_t pdpt_indx, virtaddr_t pd_iddx, virtaddr_t pt_indx );
 
 /* Will use Limine's identity mapped pages for now as it maps the total amount of physical memory we have.
     Later will need to switch to and manage the kernel's own page tables but Limine's initial PTs should work well for now.
@@ -103,7 +98,6 @@ void vmmInit()
 
 /*https://www.youtube.com/watch?v=hIsL0rGZzfs*/
 /* TODO: Add some checks to see if entries are valid */
-/* This function is slow. Should use recursive mapping instead of walking through manually */
 
 void vmmMapPage(physaddr_t physical, virtaddr_t virtual, uint64_t flags)
 {
@@ -161,9 +155,4 @@ uint64_t vmmVirtualToPhysical(virtaddr_t virtual)
 {
     physaddr_t physical = virtual - g_hhdm_req.response->offset;
     return physical;
-}
-
-uint64_t vmmPageTableVirtAddress(virtaddr_t pml4_indx, virtaddr_t pdpt_indx, virtaddr_t pd_indx, virtaddr_t pt_indx)
-{
-    return PAGE_RECURSIVE_BASE | (pml4_indx << 39) | (pdpt_indx << 30) | (pd_indx << 21) | (pt_indx << 12);
 }

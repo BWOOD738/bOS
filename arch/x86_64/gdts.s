@@ -1,13 +1,29 @@
 global gdtFlush
 
 gdtFlush:
-    mov eax, [esp+4] ; grab GDT pointer from top of stack 
-    lgdt [eax]
+    ; Save current state
+    push rbx
     
-    jmp 0x08:.flush ; This forces the CPU to update CS with new code selector (0x08)
-
-.flush:
+    ; Load new GDT
+    lgdt [rdi]
+    
+    ; Reload data segments first (before CS)
     mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    
+    ; Now reload CS using far return
+    push 0x08
+    lea rax, [rel .flush]
+    push rax
+    retfq                      
+    
+.flush:
+    ; Reload data segments
+    mov ax, 0x10              
     mov ds, ax
     mov es, ax
     mov fs, ax
@@ -16,7 +32,8 @@ gdtFlush:
     ret
 
 global tssFlush
+
 tssFlush:
-    mov ax, 0x28 ; 0x2B is offset associated with task segment 
-    ltr ax ; load task register 
-    ret 
+    mov ax, 0x28               
+    ltr ax                      ; Load task register
+    ret
