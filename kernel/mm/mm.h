@@ -78,4 +78,4 @@ void printHeap();
 
 
 void* kmalloc(size_t size );
-void* kfree(void* p);
+void kfree(void* p);

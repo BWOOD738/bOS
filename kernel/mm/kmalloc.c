@@ -8,7 +8,7 @@ static spinlock_t lock;
 
 void* kmalloc(size_t size)
 {
-    acquire(&lock)
+    acquire(&lock);
     void* ptr = slobAlloc(size);
     release(&lock);
     return ptr;
@@ -17,7 +17,7 @@ void* kmalloc(size_t size)
 
 void kfree(void *p)
 {
-    if(!ptr)
+    if(!p)
         return;
 
     acquire(&lock);
