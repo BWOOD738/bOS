@@ -1,3 +1,4 @@
+#include "arch/x86_64/gdt.h"
 #include "arch/x86_64/idt.h"
 #include "limine.h"
 #include "kernel/lib/kprintf.h"
@@ -175,6 +176,12 @@ void kmain(void)
     clear(global_terminal, 0xff000000, true);
     kprintf("Testing\n");
 
+    kprintf("Creating GDT..\n");
+
+    gdtInit();
+
+    kprintf("GDT initialized..\n");
+
     kprintf("Enabling interrupts...");
     idtInit();
     kprintf("Interrupts enabled...\n");
@@ -225,6 +232,7 @@ void kmain(void)
     slobInit(heap_start, heap_size);
     
     printHeap();
+
     /* This returns 680 bytes allocated due to slob_header_t causing a little overhead. This should reduce with larger allocations */
     void* ptr1 = slobAlloc(100);
     void* ptr2 = slobAlloc(200);

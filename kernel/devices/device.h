@@ -1,5 +1,7 @@
 #pragma once
 
+/* This file will be used at one point to allow for device regestration and tracking */
+
 typedef enum
 {
     DEVICE_UNKNOWN = 0,
@@ -12,5 +14,4 @@ typedef struct
     device_type_t* devtype;
     const char* name;
 
-    void(*init)(device_t* device);
 } device_t;
