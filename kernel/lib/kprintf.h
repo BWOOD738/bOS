@@ -9,7 +9,7 @@ void puts(const char* str);
 
 void kprintf(const char* fmt, ...);
 
-int* kprintfNumber(va_list args, int length, bool sign, int radix);
+void kprintfNumber(va_list args, int length, bool sign, int radix);
 
 #define PRINTF_STATE_START 0
 #define PRINTF_STATE_LENGTH 1

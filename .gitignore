@@ -1,4 +1,7 @@
 .vscode
 bOS
 bOS.iso
+bOS.elf
 limine
+iso_root/
+build/

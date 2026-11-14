@@ -14,9 +14,6 @@ https://cs61.seas.harvard.edu/site/2018/Kernel3Old/
 #define PD_INDEX(addr)   ((addr >> 21) & 0x1FF)
 #define PT_INDEX(addr)   ((addr >> 12) & 0x1FF)
 #define PAGEOFFSET(addr)   (addr & 0xFFF)
-#define PD_INDEX(addr) (((addr) >> 21) & 0x1FF)
-#define PT_INDEX(addr) (((addr) >> 12) & 0x1FF)
-
 
 #define PAGE_PRESENT (1ULL << 0)
 #define PAGE_WRITABLE (1ULL << 1)
@@ -81,7 +78,7 @@ void vmmInit()
     volatile uint64_t* test = (volatile uint64_t*)virt;
     *test = 0x1234567890ABCDEFULL;
     
-    volatile uint64_t* hhdm = (volatile uint64_t*)(phys + g_hhdm_req.response->offset);
+    volatile uint64_t* hhdm = (volatile uint64_t*)(phys + offset);
     
     if (*test == 0x1234567890ABCDEFULL && *hhdm == 0x1234567890ABCDEFULL) 
     {

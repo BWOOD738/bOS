@@ -253,7 +253,7 @@ void printHeap()
     size_t free = slob_allocator.total_size - slob_allocator.allocated_size;
 
     /* print fragmentation stats */
-    size_t free_blocks;
+    size_t free_blocks = 0;
     slob_header_t* current = slob_allocator.free_list;
 
     while(current != NULL)

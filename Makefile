@@ -86,6 +86,9 @@ debug: build-iso
 	@echo "Starting QEMU in debug mode..."
 	@qemu-system-x86_64 -cdrom $(ISO_NAME) -s -S -no-reboot -no-shutdown
 
+analyze: 
+	scan-build make
+
 # Clean up build artifacts
 clean:
 	@rm -rf build $(KERNEL_BIN) $(ISO_NAME) iso_root

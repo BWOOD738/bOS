@@ -82,7 +82,7 @@ void clear(terminal_t* terminal, uint32_t color, bool reset)
     uint64_t pxlsPerScanline = terminal->fb->pixels_per_scan_line;
     uint64_t fb_height = terminal->fb->height;
 
-    for (int64_t y = 0; y < terminal->fb->height; y++)
+    for (int64_t y = 0; y < fb_height; y++)
     {
         for (int64_t x = 0; x < terminal->fb->width; x++)
         {
