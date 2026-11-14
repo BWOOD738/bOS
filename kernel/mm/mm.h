@@ -1,6 +1,6 @@
 #pragma once
 
-#include <types.h>
+#include "types.h"
 
 
 /* This file will be used as an interface for the rest of the main files in the mm directory. Important functions for memory
@@ -34,29 +34,27 @@ typedef uint64_t pdpte_t;
 typedef uint64_t pde_t;
 typedef uint64_t pte_t;
 
-__attribute__((packed, aligned(PAGE_SIZE)))
 typedef struct 
 {
     pml4e_t entries[512];
-} pml4_t;
+} __attribute__((packed, aligned(PAGE_SIZE))) pml4_t;
 
-__attribute__((packed, aligned(PAGE_SIZE)))
+
 typedef struct 
 {
     pdpte_t entries[512];
-} pdpt_t;
+} __attribute__((packed, aligned(PAGE_SIZE))) pdpt_t;
 
-__attribute__((packed, aligned(PAGE_SIZE)))
+
 typedef struct 
 {
     pde_t entries[512];
-} pagedir_t;
+} __attribute__((packed, aligned(PAGE_SIZE))) pagedir_t;
 
-__attribute__((packed, aligned(PAGE_SIZE)))
 typedef struct 
 {
     pte_t entries[512];
-} pagetbl_t;
+} __attribute__((packed, aligned(PAGE_SIZE))) pagetbl_t;
 
 
 void vmmInit();

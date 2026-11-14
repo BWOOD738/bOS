@@ -45,8 +45,8 @@ void kprintf(const char* fmt, ...)
     
     int state = PRINTF_STATE_START;
     int length = PRINTF_LENGTH_START;
-    int radix = 10;
-    bool sign = false;
+    int radix;
+    bool sign;
 
     while (*fmt)
     {
@@ -156,8 +156,6 @@ void kprintf(const char* fmt, ...)
             
             state = PRINTF_STATE_START;
             length = PRINTF_LENGTH_START;
-            radix = 10;
-            sign = false;
             break;
         }
         fmt++;
@@ -169,7 +167,8 @@ void kprintf(const char* fmt, ...)
 
 const char possibleChars[] = "0123456789abcdef";
 
-int* kprintfNumber(va_list args, int length, bool sign, int radix){
+void kprintfNumber(va_list args, int length, bool sign, int radix)
+{
     
     unsigned long long num;
     
