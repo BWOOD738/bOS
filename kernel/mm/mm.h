@@ -29,31 +29,26 @@ void pmmDeinitRegion(uintptr_t base, size_t size);
 
 /* vmm.c */
 
-typedef uint64_t pml4e_t;
-typedef uint64_t pdpte_t;
-typedef uint64_t pde_t;
-typedef uint64_t pte_t;
-
 typedef struct 
 {
-    pml4e_t entries[512];
+    uint64_t entries[512];
 } __attribute__((packed, aligned(PAGE_SIZE))) pml4_t;
 
 
 typedef struct 
 {
-    pdpte_t entries[512];
+    uint64_t entries[512];
 } __attribute__((packed, aligned(PAGE_SIZE))) pdpt_t;
 
 
 typedef struct 
 {
-    pde_t entries[512];
+    uint64_t entries[512];
 } __attribute__((packed, aligned(PAGE_SIZE))) pagedir_t;
 
 typedef struct 
 {
-    pte_t entries[512];
+    uint64_t entries[512];
 } __attribute__((packed, aligned(PAGE_SIZE))) pagetbl_t;
 
 

@@ -10,6 +10,7 @@
 #include "kernel/terminal.h"
 #include "kernel/lib/memory.h"
 #include "kernel/bootloader.h"
+#include "kernel/psf1.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -119,8 +120,6 @@ struct limine_file* getFile(const char* name)
     return NULL;
 }
 
-static framebuffer_t fb;
-static psf1_font_t font;
 static terminal_t t;
 terminal_t* global_terminal;
 
@@ -129,47 +128,46 @@ void kmain(void);
 void kmain(void)
 {
 
-    if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) {
+    if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) 
+    {
         hcf();
     }
 
     // Ensure we got a framebuffer.
     if (framebuffer_request.response == NULL
-     || framebuffer_request.response->framebuffer_count < 1) {
+     || framebuffer_request.response->framebuffer_count < 1) 
+    {
        hcf();
     }
 
     // Fetch the first framebuffer.
     struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
 
+    framebuffer_t fb;
+    fb.base_addr = framebuffer->address;
+    fb.width = framebuffer->width;
+    fb.height = framebuffer->height;
+    fb.pixels_per_scan_line = framebuffer->pitch / 4;
+    fb.buffer_size = framebuffer->height * framebuffer->pitch;
     
+
+    psf1_font_t font; 
+    const char *fName = "zap-light16.psf";
+    struct limine_file *file = getFile(fName);
+    if (file == NULL)
     {
-        fb.base_addr = framebuffer->address;
-        fb.width = framebuffer->width;
-        fb.height = framebuffer->height;
-        fb.pixels_per_scan_line = framebuffer->pitch / 4;
-        fb.buffer_size = framebuffer->height * framebuffer->pitch;
+        hcf();
     }
 
-  
+    font.psf1_header = (psf1_header_t*)file->address;
+    if (font.psf1_header->magic[0] != 0x36 || font.psf1_header->magic[1] != 0x04)
     {
-        const char *fName = "zap-light16.psf";
-        struct limine_file *file = getFile(fName);
-        if (file == NULL)
-        {
-            hcf();
-        }
-
-        font.psf1_header = (psf1_header_t*)file->address;
-        if (font.psf1_header->magic[0] != 0x36 || font.psf1_header->magic[1] != 0x04)
-        {
-            hcf();
-        }
-
-        font.glyph_buffer = (void *)((uint64_t)file->address + sizeof(psf1_header_t));
+        hcf();
     }
 
-   
+    font.glyph_buffer = (void *)((uint64_t)file->address + sizeof(psf1_header_t));
+    
+
     initTerminal(&t, &fb, &font);
     global_terminal = &t;
     
@@ -196,27 +194,6 @@ void kmain(void)
 
     kprintf("Setting up pmm..\n");
     pmmInit();
-
-    /* should put this in a test directory */
-    void* block = pmmAllocPage();
-    uint64_t hhdm_offset = g_hhdm_req.response->offset;
-
-    kprintf("Allocated block at 0x%x\n", (uint64_t)block);
-    kprintf("=====Writing to block=====\n");
-    if(block)
-    {
-        uint64_t* ptest = (uint64_t*)((uint64_t)block + hhdm_offset);
-        *ptest = 0xDEADBEEF;
-        
-        if(*ptest == 0xDEADBEEF)
-        {
-            kprintf("Writing successful\n");
-        }
-        else
-        {
-            kprintf("Writing unsuccessful\n");
-        }
-    }
 
     kprintf("Initializing virtual memory...\n");
 
