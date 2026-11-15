@@ -3,5 +3,5 @@ bOS
 bOS.iso
 bOS.elf
 limine
-iso_root/
-build/
+iso_root
+build

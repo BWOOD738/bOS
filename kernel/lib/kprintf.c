@@ -3,30 +3,8 @@
 
 void putc(char c)
 {
-    if (c == '\n') 
-    {
-        global_terminal->cursor_pos.x = 0;
-        global_terminal->cursor_pos.y += 16;  
-    } 
-    else if (c == '\t')
-    {
-        global_terminal->cursor_pos.x += 32;  /* 4 spaces * 8 pixels */
-    }
-    else 
-    {
-        putcTerminal(global_terminal, c, 
-                     global_terminal->cursor_pos.x, 
-                     global_terminal->cursor_pos.y);
-                     
-        global_terminal->cursor_pos.x += 8;
-    }
-    
-    /* For line wrap */
-    if (global_terminal->cursor_pos.x + 8 > global_terminal->fb->width)
-    {
-        global_terminal->cursor_pos.x = 0;
-        global_terminal->cursor_pos.y += 16;
-    }
+    char buf[2] = { c, '\0' }; /* Needed for null terminated strings. Print handles wrapping logic */
+    print(global_terminal, buf);
 }
 
 void puts(const char* s)

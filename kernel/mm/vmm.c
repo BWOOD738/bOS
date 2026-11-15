@@ -32,12 +32,12 @@ static pml4_t* pml4;
 
 static pdpt_t* pdpt;
 static pagedir_t* pd;
-static pagetbl_t* pml1;
+static pagetbl_t* pt;
 
 static uint32_t max_phys_address;
 static uint32_t max_linear_address;
 
-static pte_t vmmAllocPage(uint64_t flags);
+static uint64_t vmmAllocPage(uint64_t flags);
 static uint64_t vmmVirtualToPhysical(virtaddr_t virtual);
 
 /* Will use Limine's identity mapped pages for now as it maps the total amount of physical memory we have.
@@ -103,39 +103,40 @@ void vmmMapPage(physaddr_t physical, virtaddr_t virtual, uint64_t flags)
 
     if(!(pml4->entries[PML4_INDEX(virtual)] & PAGE_PRESENT))
     {
-        pdpte_t pdpte_phys = (pdpte_t)pmmAllocPage();
-        pdpte_t* pdpte = (pdpte_t*)vmmPhysicalToVirtual(pdpte_phys);
+        uint64_t pdpte_phys = (uint64_t)pmmAllocPage();
+        uint64_t* pdpte = (uint64_t*)vmmPhysicalToVirtual(pdpte_phys);
 
         memset(pdpte, 0, PAGE_SIZE);
         pml4->entries[PML4_INDEX(virtual)] = pdpte_phys | PAGE_PRESENT | PAGE_WRITABLE;
     }
 
     
-    pdpt_t *pdpt = (pdpt_t*)vmmPhysicalToVirtual(pml4->entries[PML4_INDEX(virtual)] & address_mask);
+    pdpt_t* pdpt = (pdpt_t*)vmmPhysicalToVirtual(pml4->entries[PML4_INDEX(virtual)] & address_mask);
 
     if(!(pdpt->entries[PDPT_INDEX(virtual)] & PAGE_PRESENT))
     {
-        pde_t pde_phys = (pde_t)pmmAllocPage();
-        pde_t* pde = (pde_t*)vmmPhysicalToVirtual(pde_phys);
+        uint64_t pde_phys = (uint64_t)pmmAllocPage();
+        uint64_t* pde = (uint64_t*)vmmPhysicalToVirtual(pde_phys);
 
         memset(pde, 0, PAGE_SIZE);
         pdpt->entries[PDPT_INDEX(virtual)] = pde_phys | PAGE_PRESENT | PAGE_WRITABLE;
     }
 
-    pagedir_t *pd = (pagedir_t*)vmmPhysicalToVirtual(pdpt->entries[PDPT_INDEX(virtual)] & address_mask);
+    pagedir_t* pd = (pagedir_t*)vmmPhysicalToVirtual(pdpt->entries[PDPT_INDEX(virtual)] & address_mask);
 
     if(!(pd->entries[PD_INDEX(virtual)] & PAGE_PRESENT))
     {
-        pte_t pte_phys = (pte_t)pmmAllocPage();
+        uint64_t pte_phys = (uint64_t)pmmAllocPage();
 
-        pte_t* pte = (pte_t*)vmmPhysicalToVirtual(pte_phys);
+        uint64_t* pte = (uint64_t*)vmmPhysicalToVirtual(pte_phys);
+
         memset(pte, 0, PAGE_SIZE);
         pd->entries[PD_INDEX(virtual)] = (uint64_t)pte_phys | PAGE_PRESENT | PAGE_WRITABLE;
     }
 
-    pagetbl_t *pml1 = (pagetbl_t*)vmmPhysicalToVirtual(pd->entries[PD_INDEX(virtual)] & address_mask);
+    pagetbl_t* pt = (pagetbl_t*)vmmPhysicalToVirtual(pd->entries[PD_INDEX(virtual)] & address_mask);
     
-    pml1->entries[PT_INDEX(virtual)] = physical | flags;
+    pt->entries[PT_INDEX(virtual)] = physical | flags;
 
     /* Flush the tlb for this address */
     asm volatile("invlpg (%0)" :: "r"(virtual) : "memory");
