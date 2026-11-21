@@ -13,3 +13,10 @@ volatile struct limine_memmap_request g_mmap_request =
     .id = LIMINE_MEMMAP_REQUEST_ID,
     .revision = 0
 };
+
+__attribute__((used, section(".limine_requests")))
+volatile struct limine_rsdp_request g_rsdp_request = 
+{
+    .id = LIMINE_RSDP_REQUEST_ID,
+    .revision = 0
+};
