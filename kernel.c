@@ -55,6 +55,11 @@ static void hcf() {
 
 bool checkStringEndsWith(const char* str, const char* end)
 {
+    if(str == NULL)
+    {
+        hcf();
+    }
+
     const char* _str = str;
     const char* _end = end;
 
@@ -96,16 +101,16 @@ struct limine_file* getFile(const char* name)
     {
         struct limine_file *file = module_request.response->modules[i];
         
-        const char *filename = file->path;
-        const char *basename = filename;
-        for (const char *p = filename; *p != '\0'; p++) 
+        const char* filename = file->path;
+        const char* basename = filename;
+        for (const char* p = filename; *p != '\0'; p++) 
         {
             if (*p == '/') basename = p + 1;
         }
         
-        // Compare strings
-        const char *a = name;
-        const char *b = basename;
+        
+        const char* a = name;
+        const char* b = basename;
         while (*a && *b && *a == *b) 
         {
             a++;
@@ -128,6 +133,10 @@ void kmain(void);
 void kmain(void)
 {
 
+    /* Clearing this out of kmain and putting it into something like framebuffer.c which would initialize this stuff
+    would make this function way easier to read.
+    */
+
     if (LIMINE_BASE_REVISION_SUPPORTED(limine_base_revision) == false) 
     {
         hcf();
@@ -141,7 +150,7 @@ void kmain(void)
     }
 
     // Fetch the first framebuffer.
-    struct limine_framebuffer *framebuffer = framebuffer_request.response->framebuffers[0];
+    struct limine_framebuffer* framebuffer = framebuffer_request.response->framebuffers[0];
 
     framebuffer_t fb;
     fb.base_addr = framebuffer->address;
@@ -152,8 +161,8 @@ void kmain(void)
     
 
     psf1_font_t font; 
-    const char *fName = "zap-light16.psf";
-    struct limine_file *file = getFile(fName);
+    const char* fName = "zap-light16.psf";
+    struct limine_file* file = getFile(fName);
     if (file == NULL)
     {
         hcf();
@@ -167,7 +176,6 @@ void kmain(void)
 
     font.glyph_buffer = (void *)((uint64_t)file->address + sizeof(psf1_header_t));
     
-
     initTerminal(&t, &fb, &font);
     global_terminal = &t;
     
@@ -217,7 +225,8 @@ void kmain(void)
     
     printHeap();
 
-    if (!ptr1 || !ptr2 || !ptr3) {
+    if (!ptr1 || !ptr2 || !ptr3) 
+    {
         kprintf("Allocation failed");
         return;
     }
@@ -228,8 +237,9 @@ void kmain(void)
     memset(ptr3, 0xCC, 300);
     
     // Verify memory is usable
-    uint8_t* check = (uint8_t*)ptr1;
-    if (check[0] != 0xAA || check[99] != 0xAA) {
+    byte* check = (byte*)ptr1;
+    if (check[0] != 0xAA || check[99] != 0xAA)
+    {
         kprintf("Memory read failed.");
         return;
     }

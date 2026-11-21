@@ -11,4 +11,4 @@ extern uint64_t _kernel_end;
 
 extern volatile struct limine_hhdm_request g_hhdm_req;
 extern volatile struct limine_memmap_request g_mmap_request;
-
+extern volatile struct limine_rsdp_request g_rsdp_request;

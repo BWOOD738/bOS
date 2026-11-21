@@ -6,6 +6,11 @@
 static uint64_t ticks;
 static const uint32_t freq = 100;
 
+static bool isApicSupported()
+{
+    
+}
+
 /* Tell the PIT to increase ticks when IRQ0 is called */
 void pitIrq(iregs_t* regs)
 {
